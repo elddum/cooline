@@ -1,14 +1,8 @@
 cooline_theme = {
-	vertical = false,
-	reverse = false,
-	width = 360,
-	height = 18,
+	width = 400,
+	height = 20,	
 	statusbar = [[Interface\TargetingFrame\UI-StatusBar]],
 	bgcolor = { 0, 0, 0, 0.5 },
-	border = [[Interface\DialogFrame\UI-DialogBox-Border]],
-	bordersize = 16,
-	borderinset = 4,
-	bordercolor = { 1, 1, 1, 1 },
 	iconoutset = 2,
 	font = [[Fonts\FRIZQT__.TTF]],
 	fontsize = 10,
@@ -17,11 +11,8 @@ cooline_theme = {
 	nospellcolor = { 0, 0, 0, 1 },
 	inactivealpha = 0.5,
 	activealpha = 1.0,
-	treshold = 3.0,
+	threshold = 3.0,
 }
 
-cooline_ignore_list = {
-	'hearthstone'
-}
-
-COOLINE_LOADED_MESSAGE = 'Cooline loaded: move the location of the cooline bar by holding <alt> while dragging it with left mouse button.'
+COOLINE_TITLE = "|cffFF0066Cooline|cffffffff"
+COOLINE_LOADED_MESSAGE = COOLINE_TITLE .. " loaded, type|cff00eeee /cooline|cffffffff for options"

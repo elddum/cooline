@@ -4,7 +4,15 @@ cooline:SetScript('OnEvent', function()
 end)
 cooline:RegisterEvent('VARIABLES_LOADED')
 
-cooline_settings = { x = 0, y = -240 }
+cooline_settings = { 
+	x = 180, 
+	y = 0, 
+	lock = false	
+}
+
+cooline_ignore = {
+	[1] = "hearthstone",
+}
 
 local frame_pool = {}
 local cooldowns = {}
@@ -16,34 +24,34 @@ end
 
 function cooline.detect_cooldowns()
 	
-	local function start_cooldown(name, texture, start_time, duration, is_spell)
-		for _, ignored_name in cooline_ignore_list do
-			if strupper(name) == strupper(ignored_name) then
-				return
-			end
-		end
-		
-		local end_time = start_time + duration
-			
-		for _, cooldown in pairs(cooldowns) do
-			if cooldown.end_time == end_time then
-				return
-			end
-		end
+	local function start_cooldown(name, texture, start_time, duration, is_spell)				
+				for _,ignored_name in pairs(cooline_ignore) do
+					if strupper(name) == strupper(ignored_name) then
+						return
+					end
+				end		
 
-		cooldowns[name] = cooldowns[name] or tremove(frame_pool) or cooline.cooldown_frame()
-		local frame = cooldowns[name]
-		frame:SetWidth(cooline.icon_size)
-		frame:SetHeight(cooline.icon_size)
-		frame.icon:SetTexture(texture)
-		if is_spell then
-			frame:SetBackdropColor(unpack(cooline_theme.spellcolor))
-		else
-			frame:SetBackdropColor(unpack(cooline_theme.nospellcolor))
-		end
-		frame:SetAlpha((end_time - GetTime() > 360) and 0.6 or 1)
-		frame.end_time = end_time
-		frame:Show()
+				local end_time = start_time + duration
+			
+				for _, cooldown in pairs(cooldowns) do
+					if cooldown.end_time == end_time then
+						return
+					end
+				end
+
+				cooldowns[name] = cooldowns[name] or tremove(frame_pool) or cooline.cooldown_frame()
+				local frame = cooldowns[name]
+				frame:SetWidth(cooline.icon_size)
+				frame:SetHeight(cooline.icon_size)
+				frame.icon:SetTexture(texture)
+				if is_spell then
+					frame:SetBackdropColor(unpack(cooline_theme.spellcolor))
+				else
+					frame:SetBackdropColor(unpack(cooline_theme.nospellcolor))
+				end
+				frame:SetAlpha((end_time - GetTime() > 360) and 0.6 or 1)
+				frame.end_time = end_time												
+				frame:Show()
 	end
 	
     for bag = 0,4 do
@@ -108,26 +116,15 @@ function cooline.detect_cooldowns()
 end
 
 function cooline.cooldown_frame()
-	local frame = CreateFrame('Frame', nil, cooline.border)
-	frame:SetBackdrop({ bgFile=[[Interface\AddOns\cooline\backdrop.tga]] })
+	local frame = CreateFrame('Frame', nil, UIParent)	
 	frame.icon = frame:CreateTexture(nil, 'ARTWORK')
 	frame.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
 	frame.icon:SetPoint('TOPLEFT', 1, -1)
 	frame.icon:SetPoint('BOTTOMRIGHT', -1, 1)
+	frame.text = frame:CreateFontString(nil,'ARTWORK') 
+	frame.text:SetPoint('CENTER',0,0)
+	frame.text:SetFont(cooline_theme.font,cooline_theme.fontsize)	
 	return frame
-end
-
-local function place_H(this, offset, just)
-	this:SetPoint(just or 'CENTER', cooline, 'LEFT', offset, 0)
-end
-local function place_HR(this, offset, just)
-	this:SetPoint(just or 'CENTER', cooline, 'LEFT', cooline_theme.width - offset, 0)
-end
-local function place_V(this, offset, just)
-	this:SetPoint(just or 'CENTER', cooline, 'BOTTOM', 0, offset)
-end
-local function place_VR(this, offset, just)
-	this:SetPoint(just or 'CENTER', cooline, 'BOTTOM', 0, cooline_theme.height - offset)
 end
 
 function cooline.clear_cooldown(name)
@@ -156,20 +153,33 @@ end
 function cooline.update_cooldown(name, frame, position, tthrot, relevel)
 	throt = min(throt, tthrot)
 	
-	if frame.end_time - GetTime() < cooline_theme.treshold then
+	if frame.end_time - GetTime() < cooline_theme.threshold then
 		local sorted = getKeysSortedByValue(cooldowns, function(a, b) return a.end_time > b.end_time end)
 		for i, k in ipairs(sorted) do
-			if name == k then
-				frame:SetFrameLevel(i+2)
+			if name == k then				
+				frame:SetFrameLevel(i+2)					
 			end
 		end
 	else
 		if relevel then
-			frame:SetFrameLevel(random(1,5) + 2)
+			frame:SetFrameLevel(random(1,5) + 2)						
 		end
+	end	
+	
+	local remaining = frame.end_time - GetTime()
+	frame.text:SetText('')
+	if remaining >= 1 then
+		local txt = (remaining < 60 and math.floor(remaining)) or (remaining < 3600 and math.ceil(remaining / 60) .. "m") or math.ceil(remaining / 3600) .. "h"
+		frame.text:SetText(txt)   		
+	else 
+		local txt = string.format("%.1f", round(remaining,1))
+		if remaining > 0 then
+			frame.text:SetText(txt)   					
+		end 
 	end
 	
-	cooline.place(frame, position)
+	frame:SetPoint('CENTER', cooline, 'LEFT', position + 2, 0)
+	
 end
 
 do
@@ -188,7 +198,7 @@ do
 		for name, frame in pairs(cooldowns) do
 			local time_left = frame.end_time - GetTime()
 			isactive = isactive or time_left < 360
-			
+							
 			if time_left < -1 then
 				throt = min(throt, 0.2)
 				isactive = true
@@ -210,9 +220,9 @@ do
 			elseif time_left < 30 then
 				cooline.update_cooldown(name, frame, cooline.section * (time_left + 50) * 0.05, 0.06, relevel)  -- 3 + (time_left - 10) / 20
 			elseif time_left < 120 then
-				cooline.update_cooldown(name, frame, cooline.section * (time_left + 330) * 0.011111, 0.18, relevel)  -- 4 + (time_left - 30) / 90
+			 	cooline.update_cooldown(name, frame, cooline.section * (time_left + 330) * 0.011111, 0.18, relevel)  -- 4 + (time_left - 30) / 90
 			elseif time_left < 360 then
-				cooline.update_cooldown(name, frame, cooline.section * (time_left + 1080) * 0.0041667, 1.2, relevel)  -- 5 + (time_left - 120) / 240
+			 	cooline.update_cooldown(name, frame, cooline.section * (time_left + 1080) * 0.0041667, 1.2, relevel)  -- 5 + (time_left - 120) / 240
 				frame:SetAlpha(cooline_theme.activealpha)
 			else
 				cooline.update_cooldown(name, frame, 6 * cooline.section, 2, relevel)
@@ -220,35 +230,6 @@ do
 		end
 		cooline:SetAlpha(isactive and cooline_theme.activealpha or cooline_theme.inactivealpha)
 	end
-end
-
-function cooline.label(text, offset, just)
-	local fs = cooline.overlay:CreateFontString(nil, 'OVERLAY')
-	fs:SetFont(cooline_theme.font, cooline_theme.fontsize)
-	fs:SetTextColor(unpack(cooline_theme.fontcolor))
-	fs:SetText(text)
-	fs:SetWidth(cooline_theme.fontsize * 3)
-	fs:SetHeight(cooline_theme.fontsize + 2)
-	fs:SetShadowColor(unpack(cooline_theme.bgcolor))
-	fs:SetShadowOffset(1, -1)
-	if just then
-		fs:ClearAllPoints()
-		if cooline_theme.vertical then
-			fs:SetJustifyH('CENTER')
-			just = cooline_theme.reverse and ((just == 'LEFT' and 'TOP') or 'BOTTOM') or ((just == 'LEFT' and 'BOTTOM') or 'TOP')
-		elseif cooline_theme.reverse then
-			just = (just == 'LEFT' and 'RIGHT') or 'LEFT'
-			offset = offset + ((just == 'LEFT' and 1) or -1)
-			fs:SetJustifyH(just)
-		else
-			offset = offset + ((just == 'LEFT' and 1) or -1)
-			fs:SetJustifyH(just)
-		end
-	else
-		fs:SetJustifyH('CENTER')
-	end
-	cooline.place(fs, offset, just)
-	return fs
 end
 
 function cooline.VARIABLES_LOADED()
@@ -264,65 +245,50 @@ function cooline.VARIABLES_LOADED()
 		cooline_settings.x, cooline_settings.y = floor(x - ux + 0.5), floor(y - uy + 0.5)
 		this.dragging = false
 	end
+	
 	cooline:SetScript('OnDragStart', function()
-		this.dragging = true
-		this:StartMoving()
+		if cooline_settings.lock ~= true then
+			this.dragging = true
+			this:StartMoving()
+		end
 	end)
-	cooline:SetScript('OnDragStop', function()
+
+	cooline:SetScript('OnDragStop', function()		
 		this:on_drag_stop()
 	end)
-	cooline:SetScript('OnUpdate', function()
-		this:EnableMouse(IsAltKeyDown())
-		if not IsAltKeyDown() and this.dragging then
-			this:on_drag_stop()
-		end
+
+	cooline:SetScript('OnUpdate', function()		
 		cooline.on_update()
 	end)
 
 	cooline:SetWidth(cooline_theme.width)
 	cooline:SetHeight(cooline_theme.height)
-	cooline:SetPoint('CENTER', cooline_settings.x, cooline_settings.y)
-	
+	cooline:SetPoint('CENTER', cooline_settings.x, cooline_settings.y)		
+
 	cooline.bg = cooline:CreateTexture(nil, 'ARTWORK')
 	cooline.bg:SetTexture(cooline_theme.statusbar)
 	cooline.bg:SetVertexColor(unpack(cooline_theme.bgcolor))
 	cooline.bg:SetAllPoints(cooline)
-	if cooline_theme.vertical then
-		cooline.bg:SetTexCoord(1, 0, 0, 0, 1, 1, 0, 1)
-	else
-		cooline.bg:SetTexCoord(0, 1, 0, 1)
+	cooline.bg:SetTexCoord(0, 1, 0, 1)
+
+	if cooline_settings.lock == true then 
+		cooline.bg:Hide();
 	end
 
-	cooline.border = CreateFrame('Frame', nil, cooline)
-	cooline.border:SetPoint('TOPLEFT', -cooline_theme.borderinset, cooline_theme.borderinset)
-	cooline.border:SetPoint('BOTTOMRIGHT', cooline_theme.borderinset, -cooline_theme.borderinset)
-	cooline.border:SetBackdrop({
-		edgeFile = cooline_theme.border,
-		edgeSize = cooline_theme.bordersize,
-	})
-	cooline.border:SetBackdropBorderColor(unpack(cooline_theme.bordercolor))
+	cooline.section = cooline_theme.width / 6
+	cooline.icon_size = cooline_theme.height + cooline_theme.iconoutset * 2
 
-	cooline.overlay = CreateFrame('Frame', nil, cooline.border)
-	cooline.overlay:SetFrameLevel(24) -- TODO this gets changed automatically later, to 9, find out why
-
-	cooline.section = (cooline_theme.vertical and cooline_theme.height or cooline_theme.width) / 6
-	cooline.icon_size = (cooline_theme.vertical and cooline_theme.width or cooline_theme.height) + cooline_theme.iconoutset * 2
-	cooline.place = cooline_theme.vertical and (cooline_theme.reverse and place_VR or place_V) or (cooline_theme.reverse and place_HR or place_H)
-
-	cooline.tick0 = cooline.label('0', 0, 'LEFT')
-	cooline.tick1 = cooline.label('1', cooline.section)
-	cooline.tick3 = cooline.label('3', cooline.section * 2)
-	cooline.tick10 = cooline.label('10', cooline.section * 3)
-	cooline.tick30 = cooline.label('30', cooline.section * 4)
-	cooline.tick120 = cooline.label('2m', cooline.section * 5)
-	cooline.tick300 = cooline.label('6m', cooline.section * 6, 'RIGHT')
+	-- added ignore list
+	if type(cooline_ignore) ~= 'table' then 
+		cooline_ignore = {}
+	end
 	
 	cooline:RegisterEvent('SPELL_UPDATE_COOLDOWN')
 	cooline:RegisterEvent('BAG_UPDATE_COOLDOWN')
 	
 	cooline.detect_cooldowns()
 
-	DEFAULT_CHAT_FRAME:AddMessage('|c00ffff00' .. COOLINE_LOADED_MESSAGE .. '|r');
+	DEFAULT_CHAT_FRAME:AddMessage(COOLINE_LOADED_MESSAGE);
 end
 
 function cooline.BAG_UPDATE_COOLDOWN()
@@ -332,3 +298,49 @@ end
 function cooline.SPELL_UPDATE_COOLDOWN()
 	cooline.detect_cooldowns()
 end
+
+function round(num, numDecimalPlaces)
+  local mult = 10^(numDecimalPlaces or 0)
+  return math.floor(num * mult + 0.5) / mult
+end
+
+local function slash(msg, editbox)
+	-- pattern matching for cmd and args
+	-- whitespace at end of args is retained
+	local _, _, cmd, args = string.find(msg, "%s?(%w+)%s?(.*)")
+	 
+	if cmd == "lock" then	  
+	  if cooline_settings.lock == true then		
+		cooline_settings.lock = false
+		cooline.bg:Show()		
+	  else		
+		cooline_settings.lock = true
+		cooline.bg:Hide()		
+	  end 	  	
+	  DEFAULT_CHAT_FRAME:AddMessage(COOLINE_TITLE .. " setting lock to " .. tostring(cooline_settings.lock))	  
+	elseif cmd == "ignore" and args ~= "" then				
+		for k,v in pairs(cooline_ignore) do
+			if strupper(v) == strupper(args) then
+				table.remove(cooline_ignore, k)
+				DEFAULT_CHAT_FRAME:AddMessage(COOLINE_TITLE .. " removing " .. args .. " from the ignore list")
+				return
+			end
+		end
+		table.insert(cooline_ignore, args)
+		DEFAULT_CHAT_FRAME:AddMessage(COOLINE_TITLE .. " added  " .. args .. " to the ignore list")		
+	elseif cmd == "ignore" and args == "" then				
+		DEFAULT_CHAT_FRAME:AddMessage(COOLINE_TITLE .. " current ignore list:")
+		for k,v in pairs(cooline_ignore) do							
+			DEFAULT_CHAT_FRAME:AddMessage(v)			
+		end				
+	else	  
+	  DEFAULT_CHAT_FRAME:AddMessage(COOLINE_TITLE .. " usage:")	  
+	  DEFAULT_CHAT_FRAME:AddMessage("/cooline lock - lock or unlock frame");
+	  DEFAULT_CHAT_FRAME:AddMessage("/cooline ignore - show current spell ignore list");	  
+	  DEFAULT_CHAT_FRAME:AddMessage("/cooline ignore spell - add or remove spell to ignore");	  
+	end
+end
+
+SLASH_COOLINE1 = "/cooline"
+
+SlashCmdList["COOLINE"] = slash
