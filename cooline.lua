@@ -271,7 +271,8 @@ function cooline.VARIABLES_LOADED()
 	cooline.bg:SetAllPoints(cooline)
 	cooline.bg:SetTexCoord(0, 1, 0, 1)
 
-	if cooline_settings.lock == true then 
+	if cooline_settings.lock == true then
+		cooline:EnableMouse(false)	
 		cooline.bg:Hide();
 	end
 
@@ -311,10 +312,12 @@ local function slash(msg, editbox)
 	 
 	if cmd == "lock" then	  
 	  if cooline_settings.lock == true then		
-		cooline_settings.lock = false
+		cooline_settings.lock = false		
+		cooline:EnableMouse(true)
 		cooline.bg:Show()		
 	  else		
 		cooline_settings.lock = true
+		cooline:EnableMouse(false)
 		cooline.bg:Hide()		
 	  end 	  	
 	  DEFAULT_CHAT_FRAME:AddMessage(COOLINE_TITLE .. " setting lock to " .. tostring(cooline_settings.lock))	  
